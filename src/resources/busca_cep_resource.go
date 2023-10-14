@@ -8,7 +8,7 @@ import (
 )
 
 func BuscaCepResource(res http.ResponseWriter, req *http.Request) {
-	if req.URL.Path != "/" {
+	if req.URL.Path != "/cep" {
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
