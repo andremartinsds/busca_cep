@@ -2,37 +2,89 @@ package services
 
 import (
 	"busca-cep/src/types"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
+	"time"
 )
 
-func BuscaCep(cep string) (*types.ViaCep, error) {
-	url := "https://viacep.com.br/ws/" + cep + "/json/"
+func BuscaCep(cep string, req *http.Request) (*types.TypeCep, error) {
 
-	resp, err := http.Get(url)
+	resp, err := ConcorrenciaApis(cep, req)
 
 	if err != nil {
 		return nil, err
 	}
 
-	data_read, error_read_all := io.ReadAll(resp.Body)
+	dataResponse, errorResponse := io.ReadAll(resp.Body)
 
-	if error_read_all != nil {
-		return nil, error_read_all
+	if errorResponse != nil {
+		return nil, errorResponse
 	}
 
 	defer resp.Body.Close()
 
-	var via_cep types.ViaCep
+	var typeCep types.TypeCep
 
-	json.Unmarshal(data_read, &via_cep)
+	json.Unmarshal(dataResponse, &typeCep)
 
-	if via_cep == (types.ViaCep{}) {
+	if typeCep == (types.TypeCep{}) {
 		return nil, errors.New("nada foi encontrado")
 	}
 
-	return &via_cep, nil
+	return &typeCep, nil
 
+}
+
+func ConcorrenciaApis(cep string, req *http.Request) (*http.Response, error) {
+	ctx, cancel := context.WithCancel(req.Context())
+	defer cancel()
+
+	urlViaCep := "https://viacep.com.br/ws/" + cep + "/json/"
+	urlApiCep := "https://cdn.apicep.com/file/apicep/" + cep[:5] + "-" + cep[5:] + ".json"
+
+	log.Println(urlApiCep)
+
+	respChan := make(chan *http.Response)
+	errChan := make(chan error)
+
+	go func() {
+		log.Println("executando api cep")
+		resp, err := http.Get(urlApiCep)
+		if err != nil {
+			errChan <- err
+		}
+		respChan <- resp
+		cancel()
+	}()
+
+	go func() {
+		time.Sleep(5 * time.Second) // para testes
+		log.Println("executando via cep")
+		select {
+		case <-ctx.Done():
+			log.Print("primeira resposta já atendida")
+			return
+		default:
+			resp, err := http.Get(urlViaCep)
+			if err != nil {
+				errChan <- err
+			}
+
+			respChan <- resp
+			cancel()
+		}
+	}()
+
+	select {
+	case resp := <-respChan:
+		log.Println("Resposta processada")
+		return resp, nil
+	case err := <-errChan:
+		log.Print("houve um erro no processamento")
+		return nil, err
+	}
 }

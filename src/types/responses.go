@@ -1,7 +1,7 @@
 package types
 
 type Response struct {
-	Data ViaCep `json:"data"`
+	Data TypeCep `json:"data"`
 }
 
 type ErrorResponse struct {

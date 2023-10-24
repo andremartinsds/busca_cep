@@ -33,7 +33,7 @@ func BuscaCepResource(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	cepResponse, err := services.BuscaCep(cepParam)
+	cepResponse, err := services.BuscaCep(cepParam, req)
 
 	if err != nil {
 		errorResponse := types.ErrorResponse{

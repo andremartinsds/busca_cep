@@ -8,9 +8,9 @@ import (
 
 func main() {
 	mux := http.NewServeMux()
-	fileServer := http.FileServer(http.Dir("./src/public"))
+	//fileServer := http.FileServer(http.Dir("./src/public"))
 
-	mux.Handle("/", fileServer)
+	//mux.Handle("/", fileServer)
 
 	mux.HandleFunc("/cep", resources.BuscaCepResource)
 
